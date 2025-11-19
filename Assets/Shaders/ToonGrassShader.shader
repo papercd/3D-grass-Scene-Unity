@@ -52,12 +52,17 @@ Shader "Custom/ToonGrassURP"
                 SAMPLER(sampler_GrassTex);
             CBUFFER_END
 
-            // Instanced per-blade data (set from C# as Vector4 arrays)
+            // Instanced per-blade data (set from C# as Vector4 arrays
+            /*
             UNITY_INSTANCING_BUFFER_START(PerInstanceData)
                 UNITY_DEFINE_INSTANCED_PROP(float4, _BasePos)     // xyz: world pos
                 UNITY_DEFINE_INSTANCED_PROP(float4, _BaseNormal)  // xyz: world normal
                 UNITY_DEFINE_INSTANCED_PROP(float4, _TileIndex)    // 0–8 (for 3x3 grid)
             UNITY_INSTANCING_BUFFER_END(PerInstanceData)
+            */
+            StructuredBuffer<float4> _BasePos;
+            StructuredBuffer<float4> _BaseNormal;
+            StructuredBuffer<float4> _TileIndex;
 
             // Reuse the same toon lighting function you use for terrain
             float3 ComputeToonLighting(float3 worldPos, float3 normalWS, float4 baseColor, float rampSteps)
@@ -103,14 +108,17 @@ Shader "Custom/ToonGrassURP"
                 return o;
             }*/
             
-            Varyings vert(Attributes v)
+            Varyings vert(Attributes v,uint instanceID : SV_InstanceID)
             {
                 Varyings o;
-                UNITY_SETUP_INSTANCE_ID(v);
-                UNITY_TRANSFER_INSTANCE_ID(v, o);
+                //UNITY_SETUP_INSTANCE_ID(v);
+                //UNITY_TRANSFER_INSTANCE_ID(v, o);
+                float3 basePos = _BasePos[instanceID].xyz;
+                float3 baseNormal = normalize(_BaseNormal[instanceID].xyz);
+                float tileIndex = _TileIndex[instanceID].x;
 
-                float3 basePos = UNITY_ACCESS_INSTANCED_PROP(PerInstanceData, _BasePos).xyz;
-                float3 baseNormal = normalize(UNITY_ACCESS_INSTANCED_PROP(PerInstanceData, _BaseNormal).xyz);
+                //float3 basePos = UNITY_ACCESS_INSTANCED_PROP(PerInstanceData, _BasePos).xyz;
+                //float3 baseNormal = normalize(UNITY_ACCESS_INSTANCED_PROP(PerInstanceData, _BaseNormal).xyz);
 
                 float3 camPos = GetCameraPositionWS();
                 float3 viewDir = normalize(basePos - camPos);
@@ -129,7 +137,7 @@ Shader "Custom/ToonGrassURP"
                 o.baseNormalWS = baseNormal;
 
                 // === Atlas UV logic ===
-                float tileIndex = UNITY_ACCESS_INSTANCED_PROP(PerInstanceData, _TileIndex).x;
+                //float tileIndex = UNITY_ACCESS_INSTANCED_PROP(PerInstanceData, _TileIndex).x;
                 float2 tileCount = float2(3.0, 3.0); // your 3x3 atlas
                 float2 tileIndex2D = float2(fmod(tileIndex, tileCount.x), floor(tileIndex / tileCount.x));
                 o.uv = (v.uv / tileCount) + (tileIndex2D / tileCount);

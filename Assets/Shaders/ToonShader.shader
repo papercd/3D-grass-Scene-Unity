@@ -22,7 +22,7 @@ Shader "Custom/SimpleToonURP"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            // Force cascade shadows instead of screen space
+
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
@@ -32,20 +32,8 @@ Shader "Custom/SimpleToonURP"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
 
-            struct Attributes
-            {
-                float4 positionOS : POSITION;
-                float3 normalOS   : NORMAL;
-                UNITY_VERTEX_INPUT_INSTANCE_ID
-            };
-
-            struct Varyings
-            {
-                float4 positionHCS : SV_POSITION;
-                float3 normalWS    : TEXCOORD0;
-                float3 positionWS  : TEXCOORD1;
-                UNITY_VERTEX_INPUT_INSTANCE_ID
-            };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; UNITY_VERTEX_INPUT_INSTANCE_ID };
+            struct Varyings { float4 positionHCS : SV_POSITION; float3 normalWS : TEXCOORD0; float3 positionWS : TEXCOORD1; UNITY_VERTEX_INPUT_INSTANCE_ID };
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseColor;
@@ -62,7 +50,7 @@ Shader "Custom/SimpleToonURP"
                 o.positionHCS = posInputs.positionCS;
                 o.positionWS = posInputs.positionWS;
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);
-                
+
                 return o;
             }
 
@@ -71,24 +59,15 @@ Shader "Custom/SimpleToonURP"
                 UNITY_SETUP_INSTANCE_ID(i);
 
                 float3 normal = normalize(i.normalWS);
-                
-                // Always use world space shadow coordinates for render texture compatibility
                 float4 shadowCoord = TransformWorldToShadowCoord(i.positionWS);
-                
-                // Get main light with shadow attenuation
-                Light mainLight = GetMainLight(shadowCoord);
 
-                // Basic lighting
+                Light mainLight = GetMainLight(shadowCoord);
                 float NdotL = saturate(dot(normal, mainLight.direction));
 
-                // Toon quantization
                 float stepSize = 1.0 / _RampSteps;
                 NdotL = floor(NdotL / stepSize) * stepSize;
 
-                // Apply lighting with shadows
                 float3 litColor = _BaseColor.rgb * NdotL * mainLight.color * mainLight.shadowAttenuation;
-
-                // Add ambient
                 float3 ambient = SampleSH(normal);
                 litColor += _BaseColor.rgb * ambient * 0.5;
 
@@ -134,6 +113,23 @@ Shader "Custom/SimpleToonURP"
 
             ENDHLSL
         }
+
+        // ⭐ NEW: DepthNormals pass (critical for edge detection, SSAO, etc.)
+        /*
+        Pass
+        {
+            Name "DepthNormals"
+            Tags { "LightMode" = "DepthNormals" }
+
+            HLSLPROGRAM
+            #pragma vertex DepthNormalsVertex
+            #pragma fragment DepthNormalsFragment
+
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/DepthNormalsPass.hlsl"
+
+            ENDHLSL
+        }*/
     }
 
     FallBack Off
