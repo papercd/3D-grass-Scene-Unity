@@ -115,7 +115,7 @@ Shader "Custom/SimpleToonURP"
         }
 
         // ⭐ NEW: DepthNormals pass (critical for edge detection, SSAO, etc.)
-        /*
+        
         Pass
         {
             Name "DepthNormals"
@@ -129,7 +129,7 @@ Shader "Custom/SimpleToonURP"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/DepthNormalsPass.hlsl"
 
             ENDHLSL
-        }*/
+        }
     }
 
     FallBack Off
