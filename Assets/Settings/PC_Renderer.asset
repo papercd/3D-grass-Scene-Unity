@@ -68,11 +68,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98903b451350b3845810470ef0415bb5, type: 3}
   m_Name: EdgeDetectionRenderFeature
   m_EditorClassIdentifier: Assembly-CSharp::EdgeDetectionRenderFeature
-  m_Active: 1
+  m_Active: 0
   settings:
     renderPassEvent: 500
     outlineThickness: 1
-    outlineColor: {r: 1, g: 1, b: 1, a: 1}
+    outlineColor: {r: 0, g: 0, b: 0, a: 1}
 --- !u!114 &7366310930253484203
 MonoBehaviour:
   m_ObjectHideFlags: 0
