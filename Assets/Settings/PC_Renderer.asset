@@ -1,27 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-2303416245374970846
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ccf068a6c1bbb434aa22fbdbe8de8515, type: 3}
-  m_Name: GodRaysFeature
-  m_EditorClassIdentifier: Assembly-CSharp::GodRaysFeature
-  m_Active: 0
-  settings:
-    mainLight: {fileID: 0}
-    planeDistance: 5
-    stepSize: 0.27
-    maxSteps: 64
-    intensity: 1
-    scatteringCoefficient: 1
-    tint: {r: 1, g: 1, b: 1, a: 1}
-    renderPassEvent: 300
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -49,8 +27,7 @@ MonoBehaviour:
   m_RendererFeatures:
   - {fileID: 7833122117494664109}
   - {fileID: 7364324115717509915}
-  - {fileID: -2303416245374970846}
-  m_RendererFeatureMap: ad6b866f10d7b46c1b532ff0c355336622948ffc209f08e0
+  m_RendererFeatureMap: ad6b866f10d7b46c1b532ff0c3553366
   m_UseNativeRenderPass: 1
   xrSystemData: {fileID: 0}
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
@@ -95,7 +72,21 @@ MonoBehaviour:
   settings:
     renderPassEvent: 500
     outlineThickness: 1
-    outlineColor: {r: 1, g: 0.9575472, b: 0.9575472, a: 1}
+    outlineColor: {r: 1, g: 1, b: 1, a: 1}
+--- !u!114 &7366310930253484203
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbbe355921a558648b2a91a5216fa377, type: 3}
+  m_Name: GodRaysLightPlanesFeature
+  m_EditorClassIdentifier: Assembly-CSharp::GodRaysLightPlanesFeature
+  m_Active: 1
+  settings: {material: {fileID: 2100000, guid: 3484193a95657094da7ddf0852f6f5a4, type: 2}, planeCount: 24, downsample: 2, passEvent: 500}
 --- !u!114 &7833122117494664109
 MonoBehaviour:
   m_ObjectHideFlags: 0

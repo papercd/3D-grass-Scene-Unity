@@ -100,6 +100,8 @@ Shader "Hidden/Edge Detection"
 
                 float edge = max(edge_depth, max(edge_normal, edge_luminance));
 
+                
+
                 // ----------------------------
                 // OCCLUSION TEST (important)
                 // ----------------------------
