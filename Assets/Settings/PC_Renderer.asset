@@ -72,7 +72,7 @@ MonoBehaviour:
   settings:
     renderPassEvent: 500
     outlineThickness: 1
-    outlineColor: {r: 0, g: 0, b: 0, a: 1}
+    outlineColor: {r: 0.4245283, g: 0.33041117, b: 0.33041117, a: 1}
 --- !u!114 &7366310930253484203
 MonoBehaviour:
   m_ObjectHideFlags: 0
