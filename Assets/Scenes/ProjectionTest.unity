@@ -899,8 +899,8 @@ MonoBehaviour:
   noiseScale: 13.9
   cloudDensity: 0.507
   cloudSharpness: 10
-  cloudSpeed: {x: 0.025, y: 0.025}
-  secondaryCloudSpeed: {x: 0.025, y: 0.025}
+  cloudSpeed: {x: 0.001, y: 0.001}
+  secondaryCloudSpeed: {x: 0.001, y: 0.001}
   minOpacity: 0
   maxOpacity: 1
   secondaryNoiseScale: 3.2
@@ -1584,6 +1584,7 @@ MonoBehaviour:
   grassCount: 9000
   scaleRange: {x: 1, y: 1}
   randomRotation: 0
+  castShadows: 0
 --- !u!1001 &1656330092
 PrefabInstance:
   m_ObjectHideFlags: 0

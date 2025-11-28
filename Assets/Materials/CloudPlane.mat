@@ -105,13 +105,13 @@ Material:
     - _ClearCoatSmoothness: 0
     - _CloudDensity: 0.534
     - _CloudSharpness: 6
-    - _CloudSoftness: 0.051
-    - _CloudThreshold: 0.51
+    - _CloudSoftness: 0.1231
+    - _CloudThreshold: 0.518
     - _Cull: 2
     - _Cutoff: 0.5
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
-    - _DitherStrength: 0
+    - _DitherStrength: 0.792
     - _DstBlend: 0
     - _DstBlendAlpha: 0
     - _EdgeFade: 0.37
@@ -127,7 +127,7 @@ Material:
     - _Parallax: 0.005
     - _QueueOffset: 0
     - _ReceiveShadows: 1
-    - _SecondaryNoiseScale: 3.2
+    - _SecondaryNoiseScale: 2.3
     - _SecondaryNoiseStrength: 1
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0

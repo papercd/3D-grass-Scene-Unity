@@ -14,6 +14,10 @@ public class GrassSpawner : MonoBehaviour
     public Vector2 scaleRange = new Vector2(0.8f, 1.2f);
     public bool randomRotation = true;
 
+    [Header("Shadows")]
+    [Tooltip("Should grass cast shadows?")]
+    public bool castShadows = false;  // NEW: Toggle for shadow casting
+
     // GPU buffers (persistent)
     private ComputeBuffer argsBuffer;
     private ComputeBuffer positionBuffer;
@@ -107,6 +111,11 @@ public class GrassSpawner : MonoBehaviour
     {
         if (argsBuffer == null) return;
 
+        // Determine shadow casting mode based on toggle
+        var shadowMode = castShadows
+            ? UnityEngine.Rendering.ShadowCastingMode.On
+            : UnityEngine.Rendering.ShadowCastingMode.Off;
+
         // Just issue the draw call - no data upload!
         Graphics.DrawMeshInstancedIndirect(
             grassMesh,
@@ -116,7 +125,7 @@ public class GrassSpawner : MonoBehaviour
             argsBuffer,
             0,
             null,
-            UnityEngine.Rendering.ShadowCastingMode.On,
+            shadowMode,  // Now controlled by the castShadows toggle
             true,
             gameObject.layer
         );
