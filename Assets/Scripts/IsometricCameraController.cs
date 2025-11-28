@@ -4,8 +4,9 @@ using UnityEngine.InputSystem;
 public class CameraControllerOrbit : MonoBehaviour
 {
     [Header("Pivot Settings")]
-    public Vector3 pivotPoint = Vector3.zero; // usually origin
+    public Vector3 pivotPoint = Vector3.zero;
     public float rotationSpeed = 100f;
+    public float snapRotationSpeed = 5f;  // Speed for 90-degree snaps
 
     [Header("Zoom Settings")]
     public float zoomedSize = 10f;
@@ -22,6 +23,11 @@ public class CameraControllerOrbit : MonoBehaviour
     private float targetSize;
     private bool wasKPressed = false;
 
+    // Snap rotation variables
+    private bool isSnapping = false;
+    private Vector3 targetPosition;
+    private Quaternion targetRotation;
+
     void Start()
     {
         cam = GetComponentInChildren<Camera>();
@@ -35,34 +41,67 @@ public class CameraControllerOrbit : MonoBehaviour
             cam.orthographicSize = defaultSize;
         }
 
-        // Get or add AudioSource component
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null)
         {
             audioSource = gameObject.AddComponent<AudioSource>();
         }
         audioSource.playOnAwake = false;
+
+        targetPosition = transform.position;
+        targetRotation = transform.rotation;
     }
 
     void Update()
     {
         float yawInput = 0f;
 
-        // Mouse input (new Input System)
-        if (Mouse.current.rightButton.isPressed)
+        // Detect Q key press (add -90 degrees to target)
+        if (Keyboard.current.qKey.wasPressedThisFrame)
+        {
+            AddRotation(-45f);
+        }
+
+        // Detect E key press (add +90 degrees to target)
+        if (Keyboard.current.eKey.wasPressedThisFrame)
+        {
+            AddRotation(45f);
+        }
+
+        // Mouse input for free rotation (only when not snapping)
+        /*
+        if (Mouse.current.rightButton.isPressed && !isSnapping)
+        {
             yawInput = Mouse.current.delta.x.ReadValue();
 
-        // Optional keyboard input
-        if (Keyboard.current.qKey.isPressed) yawInput = -1f;
-        if (Keyboard.current.eKey.isPressed) yawInput = 1f;
+            if (yawInput != 0f)
+            {
+                // Rotate around pivot
+                transform.RotateAround(pivotPoint, Vector3.up, yawInput * rotationSpeed * Time.deltaTime);
+                transform.LookAt(pivotPoint);
 
-        if (yawInput != 0f)
+                // Update targets to current transform
+                targetPosition = transform.position;
+                targetRotation = transform.rotation;
+            }
+        }*/
+
+        // Smooth snap rotation - interpolate BOTH position and rotation
+        if (isSnapping)
         {
-            // Rotate CameraController around the pivot point (Y axis)
-            transform.RotateAround(pivotPoint, Vector3.up, yawInput * rotationSpeed * Time.deltaTime);
+            transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime * snapRotationSpeed);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * snapRotationSpeed);
 
-            // Make the CameraController look at the pivot (origin)
-            transform.LookAt(pivotPoint);
+            // Check if we're close enough to target
+            float positionDistance = Vector3.Distance(transform.position, targetPosition);
+            float rotationAngle = Quaternion.Angle(transform.rotation, targetRotation);
+
+            if (positionDistance < 0.01f && rotationAngle < 0.1f)
+            {
+                transform.position = targetPosition;
+                transform.rotation = targetRotation;
+                isSnapping = false;
+            }
         }
 
         // Toggle zoom with K key
@@ -71,7 +110,6 @@ public class CameraControllerOrbit : MonoBehaviour
             isZoomed = !isZoomed;
             targetSize = isZoomed ? zoomedSize : defaultSize;
 
-            // Play appropriate sound
             if (isZoomed && zoomInSound != null)
             {
                 audioSource.PlayOneShot(zoomInSound);
@@ -88,5 +126,18 @@ public class CameraControllerOrbit : MonoBehaviour
         {
             cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, targetSize, Time.deltaTime * zoomSpeed);
         }
+    }
+
+    void AddRotation(float degrees)
+    {
+        // Calculate new target position by rotating from CURRENT target position
+        Vector3 directionFromPivot = targetPosition - pivotPoint;
+        Vector3 newDirection = Quaternion.Euler(0, degrees, 0) * directionFromPivot;
+        targetPosition = pivotPoint + newDirection;
+
+        // Calculate new target rotation by adding to CURRENT target rotation
+        targetRotation = Quaternion.Euler(0, degrees, 0) * targetRotation;
+
+        isSnapping = true;
     }
 }
