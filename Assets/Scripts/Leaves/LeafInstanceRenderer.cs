@@ -15,17 +15,27 @@ public class LeafInstanceRenderer : MonoBehaviour
 
     private Bounds renderBounds;
     private int actualLeafCount;
-    private Material materialInstance; // NEW: Store the instance
+
+    // CRITICAL FIX: Make material instance public so preset system can access it
+    [HideInInspector]
+    public Material materialInstance;
+
+    // NEW: Create material instance in Awake() so it exists BEFORE MaterialPresetController.Start()
+    void Awake()
+    {
+        if (leafMaterial != null)
+        {
+            materialInstance = new Material(leafMaterial);
+            materialInstance.name = leafMaterial.name + " (Instance)";
+            Debug.Log($"[{gameObject.name}] Material instance created in Awake: " + materialInstance.name);
+        }
+    }
 
     void Start()
     {
         Mesh canopyMesh = GetComponent<MeshFilter>().sharedMesh;
 
         if (!ValidateComponents(canopyMesh)) return;
-
-        // Create material instance
-        materialInstance = new Material(leafMaterial);
-        Debug.Log("Material instance created: " + materialInstance.name);
 
         GenerateLeaves(canopyMesh);
     }
@@ -34,17 +44,22 @@ public class LeafInstanceRenderer : MonoBehaviour
     {
         if (canopyMesh == null)
         {
-            Debug.LogError("No canopy mesh found!");
+            Debug.LogError($"[{gameObject.name}] No canopy mesh found!");
             return false;
         }
         if (leafQuad == null)
         {
-            Debug.LogError("No leaf quad assigned!");
+            Debug.LogError($"[{gameObject.name}] No leaf quad assigned!");
             return false;
         }
         if (leafMaterial == null)
         {
-            Debug.LogError("No leaf material assigned!");
+            Debug.LogError($"[{gameObject.name}] No leaf material assigned!");
+            return false;
+        }
+        if (materialInstance == null)
+        {
+            Debug.LogError($"[{gameObject.name}] Material instance is NULL! (Should have been created in Awake)");
             return false;
         }
         return true;
@@ -58,11 +73,11 @@ public class LeafInstanceRenderer : MonoBehaviour
         SampleMeshSurface(canopyMesh, transform, leafCount, positions, normals);
 
         actualLeafCount = positions.Count;
-        Debug.Log($"Generated {actualLeafCount} leaves");
+        Debug.Log($"[{gameObject.name}] Generated {actualLeafCount} leaves");
 
         if (actualLeafCount == 0)
         {
-            Debug.LogError("No leaves generated!");
+            Debug.LogError($"[{gameObject.name}] No leaves generated!");
             return;
         }
 
@@ -97,7 +112,7 @@ public class LeafInstanceRenderer : MonoBehaviour
         materialInstance.SetBuffer("_BaseNormal", normalBuffer);
         materialInstance.SetBuffer("_RandomValues", randomBuffer);
 
-        Debug.Log("Buffers set on material instance");
+        Debug.Log($"[{gameObject.name}] Buffers set on material instance");
 
         CalculateBounds(positions);
     }
@@ -116,7 +131,7 @@ public class LeafInstanceRenderer : MonoBehaviour
         renderBounds = new Bounds((min + max) * 0.5f, max - min);
         renderBounds.Expand(leafSize * 3f);
 
-        Debug.Log($"Bounds: center={renderBounds.center}, size={renderBounds.size}");
+        Debug.Log($"[{gameObject.name}] Bounds: center={renderBounds.center}, size={renderBounds.size}");
     }
 
     void Update()
