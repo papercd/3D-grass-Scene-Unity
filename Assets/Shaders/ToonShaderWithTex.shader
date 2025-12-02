@@ -1,4 +1,4 @@
-Shader "Custom/SimpleToonURP"
+Shader "Custom/SimpleTexedToonURP"
 {
     Properties
     {
