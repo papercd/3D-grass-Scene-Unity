@@ -12,78 +12,111 @@ public class PresetBasedDayNightCycle : MonoBehaviour
         public string presetName;
         [Range(0f, 24f)]
         public float timeOfDay;
-        
+
         [Header("Lighting")]
         public float sunAngle = 50f; // Vertical angle
         public float sunRotation = 0f; // Horizontal rotation
         public float lightIntensity = 1f;
         public Color lightColor = Color.white;
         public float shadowStrength = 1f;
-        
+
         [Header("Ambient")]
         public Color ambientColor = new Color(0.5f, 0.5f, 0.5f);
         public float ambientIntensity = 1f;
-        
+
         [Header("Fog")]
         public Color fogColor = Color.gray;
         public float fogDensity = 0.01f;
-        
+
         [Header("Skybox")]
         public float skyboxExposure = 1f;
+
+
     }
-    
+
     [Header("Time Settings")]
     [Range(0f, 24f)]
     public float currentTime = 12f;
     public float dayDurationInMinutes = 10f;
     public bool autoAdvanceTime = true;
-    
+
     [Header("Time Presets")]
     public TimeOfDayPreset[] timePresets = new TimeOfDayPreset[4];
-    
+
     [Header("Light Reference")]
     public Light directionalLight;
-    
+
     [Header("Skybox")]
     public Material skyboxMaterial;
-    
+
+    [Header("Dynamic Object Darkening")]
+    public AnimationCurve objectDarkeningCurve = AnimationCurve.EaseInOut(0, 0.3f, 24, 1f);
+    public Gradient objectTintGradient;
+
     [Header("Debug")]
     public bool showDebugInfo = true;
-    
+
     private int currentPresetIndex = 0;
     private int nextPresetIndex = 1;
     private float blendFactor = 0f;
-    
+
     void Start()
     {
+
+        // Initialize global properties with safe defaults
+        Shader.SetGlobalFloat("_DayNightDarkening", 1f);
+        Shader.SetGlobalColor("_DayNightTint", Color.white);
+
+        // Setup default gradient if not set
+        if (objectTintGradient == null)
+        {
+            objectTintGradient = new Gradient();
+            GradientColorKey[] colorKeys = new GradientColorKey[3];
+            colorKeys[0] = new GradientColorKey(new Color(0.6f, 0.7f, 0.9f), 0f); // Night - blue
+            colorKeys[1] = new GradientColorKey(Color.white, 0.5f); // Day - white
+            colorKeys[2] = new GradientColorKey(new Color(0.6f, 0.7f, 0.9f), 1f); // Night - blue
+
+            GradientAlphaKey[] alphaKeys = new GradientAlphaKey[2];
+            alphaKeys[0] = new GradientAlphaKey(1f, 0f);
+            alphaKeys[1] = new GradientAlphaKey(1f, 1f);
+
+            objectTintGradient.SetKeys(colorKeys, alphaKeys);
+        }
         if (directionalLight == null)
             directionalLight = RenderSettings.sun;
-        
+
         SetupDefaultPresets();
         UpdateEnvironment();
     }
-    
+
     void Update()
     {
         if (autoAdvanceTime)
         {
             float timeIncrement = (24f / (dayDurationInMinutes * 60f)) * Time.deltaTime;
             currentTime += timeIncrement;
-            
+
             if (currentTime >= 24f)
                 currentTime = 0f;
         }
-        
+
+        // Update global properties for dynamic objects
+        float darkening = objectDarkeningCurve.Evaluate(currentTime);
+        Color tint = objectTintGradient.Evaluate(currentTime / 24f);
+
+        Shader.SetGlobalFloat("_DayNightDarkening", darkening);
+        Shader.SetGlobalColor("_DayNightTint", tint);
+
         UpdateEnvironment();
     }
-    
+
     void UpdateEnvironment()
     {
         FindCurrentPresets();
         CalculateBlendFactor();
         BlendPresets();
     }
-    
+
     void FindCurrentPresets()
     {
         if (timePresets == null || timePresets.Length < 2)
@@ -92,10 +125,10 @@ public class PresetBasedDayNightCycle : MonoBehaviour
             nextPresetIndex = 0;
             return;
         }
-        
+
         // Sort presets by time (if not already sorted)
         System.Array.Sort(timePresets, (a, b) => a.timeOfDay.CompareTo(b.timeOfDay));
-        
+
         // Find which two presets we're between
         for (int i = 0; i < timePresets.Length; i++)
         {
@@ -106,34 +139,34 @@ public class PresetBasedDayNightCycle : MonoBehaviour
             }
         }
     }
-    
+
     void CalculateBlendFactor()
     {
         TimeOfDayPreset current = timePresets[currentPresetIndex];
         TimeOfDayPreset next = timePresets[nextPresetIndex];
-        
+
         float startTime = current.timeOfDay;
         float endTime = next.timeOfDay;
-        
+
         // Handle wrap around midnight
         if (endTime < startTime)
             endTime += 24f;
-        
+
         float adjustedCurrentTime = currentTime;
         if (adjustedCurrentTime < startTime)
             adjustedCurrentTime += 24f;
-        
+
         float duration = endTime - startTime;
         float elapsed = adjustedCurrentTime - startTime;
-        
+
         blendFactor = Mathf.Clamp01(elapsed / duration);
     }
-    
+
     void BlendPresets()
     {
         TimeOfDayPreset current = timePresets[currentPresetIndex];
         TimeOfDayPreset next = timePresets[nextPresetIndex];
-        
+
         // Blend lighting
         if (directionalLight != null)
         {
@@ -141,22 +174,22 @@ public class PresetBasedDayNightCycle : MonoBehaviour
             float sunAngle = Mathf.Lerp(current.sunAngle, next.sunAngle, blendFactor);
             float sunRotation = Mathf.Lerp(current.sunRotation, next.sunRotation, blendFactor);
             directionalLight.transform.rotation = Quaternion.Euler(sunAngle, sunRotation, 0f);
-            
+
             // Blend intensity and color
             directionalLight.intensity = Mathf.Lerp(current.lightIntensity, next.lightIntensity, blendFactor);
             directionalLight.color = Color.Lerp(current.lightColor, next.lightColor, blendFactor);
             directionalLight.shadowStrength = Mathf.Lerp(current.shadowStrength, next.shadowStrength, blendFactor);
         }
-        
+
         // Blend ambient
         RenderSettings.ambientLight = Color.Lerp(current.ambientColor, next.ambientColor, blendFactor);
         RenderSettings.ambientIntensity = Mathf.Lerp(current.ambientIntensity, next.ambientIntensity, blendFactor);
-        
+
         // Blend fog
         RenderSettings.fog = true;
         RenderSettings.fogColor = Color.Lerp(current.fogColor, next.fogColor, blendFactor);
         RenderSettings.fogDensity = Mathf.Lerp(current.fogDensity, next.fogDensity, blendFactor);
-        
+
         // Blend skybox
         if (skyboxMaterial != null)
         {
@@ -164,14 +197,14 @@ public class PresetBasedDayNightCycle : MonoBehaviour
             skyboxMaterial.SetFloat("_Exposure", exposure);
         }
     }
-    
+
     void SetupDefaultPresets()
     {
         if (timePresets == null || timePresets.Length == 0)
         {
             timePresets = new TimeOfDayPreset[4];
         }
-        
+
         // Night
         if (timePresets[0] == null)
         {
@@ -191,7 +224,7 @@ public class PresetBasedDayNightCycle : MonoBehaviour
                 skyboxExposure = 0.3f
             };
         }
-        
+
         // Dawn / Golden Hour
         if (timePresets.Length > 1 && timePresets[1] == null)
         {
@@ -211,7 +244,7 @@ public class PresetBasedDayNightCycle : MonoBehaviour
                 skyboxExposure = 0.8f
             };
         }
-        
+
         // Day
         if (timePresets.Length > 2 && timePresets[2] == null)
         {
@@ -231,7 +264,7 @@ public class PresetBasedDayNightCycle : MonoBehaviour
                 skyboxExposure = 1.2f
             };
         }
-        
+
         // Dusk / Twilight
         if (timePresets.Length > 3 && timePresets[3] == null)
         {
@@ -252,36 +285,36 @@ public class PresetBasedDayNightCycle : MonoBehaviour
             };
         }
     }
-    
+
     public TimeOfDayPreset GetCurrentPreset()
     {
         return timePresets[currentPresetIndex];
     }
-    
+
     public TimeOfDayPreset GetNextPreset()
     {
         return timePresets[nextPresetIndex];
     }
-    
+
     public float GetBlendFactor()
     {
         return blendFactor;
     }
-    
+
     void OnGUI()
     {
         if (!showDebugInfo) return;
-        
+
         GUILayout.BeginArea(new Rect(10, 10, 350, 150));
         GUILayout.Box("Preset-Based Day-Night Cycle");
         GUILayout.Label($"Time: {GetTimeString()}");
-        
+
         if (timePresets != null && timePresets.Length > currentPresetIndex && timePresets.Length > nextPresetIndex)
         {
             GUILayout.Label($"Blending: {timePresets[currentPresetIndex].presetName} → {timePresets[nextPresetIndex].presetName}");
             GUILayout.Label($"Blend Factor: {blendFactor:F2}");
         }
-        
+
         if (directionalLight != null)
         {
             GUILayout.Label($"Sun Angle: {directionalLight.transform.eulerAngles.x:F1}°");
@@ -289,14 +322,14 @@ public class PresetBasedDayNightCycle : MonoBehaviour
         }
         GUILayout.EndArea();
     }
-    
+
     string GetTimeString()
     {
         int hours = Mathf.FloorToInt(currentTime);
         int minutes = Mathf.FloorToInt((currentTime - hours) * 60f);
         return $"{hours:00}:{minutes:00}";
     }
-    
+
     public void SetTime(float hour)
     {
         currentTime = Mathf.Clamp(hour, 0f, 24f);

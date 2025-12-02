@@ -24,6 +24,8 @@ MonoBehaviour:
     godRayColor: {r: 0.3, g: 0.35, b: 0.5, a: 1}
     godRayIntensity: 0
     cloudThreshold: 0.4
+    ambientSound: {fileID: 8300000, guid: c5c1a7e5bdc7a9e4381b2ce2b9dcc521, type: 3}
+    ambientVolume: 0.475
   - presetName: Golden Hour
     timeOfDay: 6
     grassTint: {r: 0.631989, g: 0.8113208, b: 0.39417946, a: 1}
@@ -35,6 +37,8 @@ MonoBehaviour:
     godRayColor: {r: 1, g: 0.75, b: 0.5, a: 1}
     godRayIntensity: 1
     cloudThreshold: 0.47
+    ambientSound: {fileID: 8300000, guid: 7ef8b4151751b8d4fa33d97f45c7ff19, type: 3}
+    ambientVolume: 0.466
   - presetName: Day
     timeOfDay: 12
     grassTint: {r: 0.52, g: 0.87, b: 0.38, a: 1}
@@ -46,6 +50,8 @@ MonoBehaviour:
     godRayColor: {r: 1, g: 0.98, b: 0.9, a: 1}
     godRayIntensity: 1.5
     cloudThreshold: 0.5
+    ambientSound: {fileID: 8300000, guid: 7ef8b4151751b8d4fa33d97f45c7ff19, type: 3}
+    ambientVolume: 0.571
   - presetName: Twilight
     timeOfDay: 18
     grassTint: {r: 0.094918124, g: 0.254717, b: 0.19607843, a: 1}
@@ -57,3 +63,6 @@ MonoBehaviour:
     godRayColor: {r: 0.73758453, g: 0.8018868, b: 0.7769793, a: 1}
     godRayIntensity: 0.08
     cloudThreshold: 0.46
+    ambientSound: {fileID: 8300000, guid: c5c1a7e5bdc7a9e4381b2ce2b9dcc521, type: 3}
+    ambientVolume: 0.458
+  audioTransitionDuration: 2

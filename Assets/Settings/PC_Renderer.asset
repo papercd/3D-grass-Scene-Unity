@@ -70,9 +70,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EdgeDetectionRenderFeature
   m_Active: 0
   settings:
-    renderPassEvent: 500
-    outlineThickness: 1
-    outlineColor: {r: 0.4245283, g: 0.33041117, b: 0.33041117, a: 1}
+    renderPassEvent: 1000
+    outlineThickness: 0
+    outlineColor: {r: 1, g: 0, b: 0, a: 1}
 --- !u!114 &7366310930253484203
 MonoBehaviour:
   m_ObjectHideFlags: 0

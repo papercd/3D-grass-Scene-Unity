@@ -3,8 +3,7 @@ using UnityEditor;
 
 /// <summary>
 /// Play Mode safe preset editor - can save to ScriptableObject even during Play Mode!
-/// NOW INCLUDES GOD RAYS AND CLOUD THRESHOLD
-/// UPDATED: Works with CloudPlaneController reference instead of direct material
+/// NOW INCLUDES: God rays, cloud threshold, and AMBIENT SOUNDS
 /// </summary>
 [ExecuteInEditMode]
 public class PlayModeSafePresetEditor : MonoBehaviour
@@ -15,6 +14,9 @@ public class PlayModeSafePresetEditor : MonoBehaviour
 
     [Tooltip("The controller that applies the presets")]
     public MaterialPresetController presetController;
+
+    [Tooltip("The ambient sound controller")]
+    public AmbientSoundController ambientSoundController;
 
     [Header("Editing Controls")]
     [Tooltip("Which preset slot you're currently editing (0=Night, 1=Golden Hour, 2=Day, 3=Twilight)")]
@@ -61,6 +63,14 @@ public class PlayModeSafePresetEditor : MonoBehaviour
     [Tooltip("Cloud threshold - LOWER = more clouds, HIGHER = fewer clouds")]
     public float cloudThreshold = 0.5f;
 
+    [Header("Ambient Sound")]
+    [Tooltip("Ambient sound for this preset (e.g., crickets, birds, wind)")]
+    public AudioClip ambientSound;
+
+    [Range(0f, 1f)]
+    [Tooltip("Volume for this ambient sound")]
+    public float ambientVolume = 0.7f;
+
     [Header("Preview Settings")]
     public bool freezeTime = false;
 
@@ -86,6 +96,11 @@ public class PlayModeSafePresetEditor : MonoBehaviour
         if (dayNightCycle == null)
         {
             dayNightCycle = FindObjectOfType<PresetBasedDayNightCycle>();
+        }
+
+        if (ambientSoundController == null)
+        {
+            ambientSoundController = FindObjectOfType<AmbientSoundController>();
         }
 
         // Get cloud plane material instance from controller
@@ -139,6 +154,8 @@ public class PlayModeSafePresetEditor : MonoBehaviour
         godRayColor = preset.godRayColor;
         godRayIntensity = preset.godRayIntensity;
         cloudThreshold = preset.cloudThreshold;
+        ambientSound = preset.ambientSound;  // NEW
+        ambientVolume = preset.ambientVolume;  // NEW
 
         Debug.Log($"Loaded preset [{index}] {presetName} into editor");
     }
@@ -166,11 +183,19 @@ public class PlayModeSafePresetEditor : MonoBehaviour
         preset.godRayColor = godRayColor;
         preset.godRayIntensity = godRayIntensity;
         preset.cloudThreshold = cloudThreshold;
+        preset.ambientSound = ambientSound;  // NEW
+        preset.ambientVolume = ambientVolume;  // NEW
 
 #if UNITY_EDITOR
         EditorUtility.SetDirty(presetsAsset);
         AssetDatabase.SaveAssets();
 #endif
+
+        // Notify ambient sound controller to reinitialize
+        if (ambientSoundController != null)
+        {
+            ambientSoundController.RestartAllAudio();
+        }
 
         Debug.Log($"✅ SAVED preset [{currentPresetIndex}] {presetName} to ScriptableObject (Play Mode Safe!)");
     }
@@ -206,7 +231,7 @@ public class PlayModeSafePresetEditor : MonoBehaviour
                 presetController.godRayMaterial.SetFloat("_MainLightIntensity", godRayIntensity);
         }
 
-        // Apply cloud threshold to INSTANCE (FIXED!)
+        // Apply cloud threshold to INSTANCE
         if (cloudPlaneMaterialInstance != null)
         {
             if (cloudPlaneMaterialInstance.HasProperty("_CloudThreshold"))
@@ -246,7 +271,7 @@ public class PlayModeSafePresetEditor : MonoBehaviour
         autoApplyChanges = true;
         freezeTime = true;
         if (dayNightCycle != null) dayNightCycle.currentTime = 0f;
-        Debug.Log("🌙 EDITING NIGHT PRESET - Adjust colors in Inspector, then Save");
+        Debug.Log("🌙 EDITING NIGHT PRESET - Adjust colors & sounds in Inspector, then Save");
     }
 
     [ContextMenu("2️⃣ Edit Golden Hour (06:00)")]
@@ -256,7 +281,7 @@ public class PlayModeSafePresetEditor : MonoBehaviour
         autoApplyChanges = true;
         freezeTime = true;
         if (dayNightCycle != null) dayNightCycle.currentTime = 6f;
-        Debug.Log("🌅 EDITING GOLDEN HOUR PRESET - Adjust colors in Inspector, then Save");
+        Debug.Log("🌅 EDITING GOLDEN HOUR PRESET - Adjust colors & sounds in Inspector, then Save");
     }
 
     [ContextMenu("3️⃣ Edit Day Colors (12:00)")]
@@ -266,7 +291,7 @@ public class PlayModeSafePresetEditor : MonoBehaviour
         autoApplyChanges = true;
         freezeTime = true;
         if (dayNightCycle != null) dayNightCycle.currentTime = 12f;
-        Debug.Log("☀️ EDITING DAY PRESET - Adjust colors in Inspector, then Save");
+        Debug.Log("☀️ EDITING DAY PRESET - Adjust colors & sounds in Inspector, then Save");
     }
 
     [ContextMenu("4️⃣ Edit Twilight Colors (18:00)")]
@@ -276,7 +301,7 @@ public class PlayModeSafePresetEditor : MonoBehaviour
         autoApplyChanges = true;
         freezeTime = true;
         if (dayNightCycle != null) dayNightCycle.currentTime = 18f;
-        Debug.Log("🌆 EDITING TWILIGHT PRESET - Adjust colors in Inspector, then Save");
+        Debug.Log("🌆 EDITING TWILIGHT PRESET - Adjust colors & sounds in Inspector, then Save");
     }
 
     [ContextMenu("💾 Save This Preset (PLAY MODE SAFE)")]
@@ -300,7 +325,7 @@ public class PlayModeSafePresetEditor : MonoBehaviour
                 presetController.autoUpdateFromCycle = true;
             }
 
-            Debug.Log("▶️ PREVIEW STARTED - Full 24hr cycle in 2 minutes");
+            Debug.Log("▶️ PREVIEW STARTED - Full 24hr cycle in 2 minutes (visuals + audio)");
         }
     }
 
@@ -321,6 +346,49 @@ public class PlayModeSafePresetEditor : MonoBehaviour
         if (presetController != null)
         {
             presetController.CaptureCurrentMaterialColors();
+        }
+
+        if (ambientSoundController != null)
+        {
+            ambientSoundController.ListCurrentVolumes();
+        }
+    }
+
+    [ContextMenu("🔊 Preview Current Ambient Sound")]
+    void PreviewAmbientSound()
+    {
+        if (ambientSound != null)
+        {
+            // Find or create a temporary audio source for preview
+            AudioSource previewSource = GetComponent<AudioSource>();
+            if (previewSource == null)
+            {
+                previewSource = gameObject.AddComponent<AudioSource>();
+                previewSource.playOnAwake = false;
+                previewSource.spatialBlend = 0f;
+            }
+
+            previewSource.clip = ambientSound;
+            previewSource.volume = ambientVolume;
+            previewSource.loop = true;
+            previewSource.Play();
+
+            Debug.Log($"🔊 Playing preview: {ambientSound.name} at volume {ambientVolume:F2}");
+        }
+        else
+        {
+            Debug.LogWarning("No ambient sound assigned to preview!");
+        }
+    }
+
+    [ContextMenu("🔇 Stop Preview Sound")]
+    void StopPreviewSound()
+    {
+        AudioSource previewSource = GetComponent<AudioSource>();
+        if (previewSource != null)
+        {
+            previewSource.Stop();
+            Debug.Log("🔇 Stopped preview sound");
         }
     }
 }
