@@ -250,7 +250,7 @@ MonoBehaviour:
   rotationSpeed: 100
   snapRotationSpeed: 5
   zoomedSize: 8
-  defaultSize: 12
+  defaultSize: 16
   zoomSpeed: 9.8
   zoomInSound: {fileID: 8300000, guid: 7fefc4975510cb049bb5e2776ed53926, type: 3}
   zoomOutSound: {fileID: 8300000, guid: 6ec7354af34a537408d6a71183be4a18, type: 3}
