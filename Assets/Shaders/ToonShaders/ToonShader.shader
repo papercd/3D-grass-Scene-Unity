@@ -61,6 +61,7 @@ Shader "Custom/SimpleToonURP"
                 float3 normal = normalize(i.normalWS);
                 float4 shadowCoord = TransformWorldToShadowCoord(i.positionWS);
 
+                // Main directional light
                 Light mainLight = GetMainLight(shadowCoord);
                 float NdotL = saturate(dot(normal, mainLight.direction));
 
@@ -68,8 +69,29 @@ Shader "Custom/SimpleToonURP"
                 NdotL = floor(NdotL / stepSize) * stepSize;
 
                 float3 litColor = _BaseColor.rgb * NdotL * mainLight.color * mainLight.shadowAttenuation;
+                
+                // Ambient
                 float3 ambient = SampleSH(normal);
                 litColor += _BaseColor.rgb * ambient * 0.5;
+
+                // ⭐ NEW: Additional lights (point lights, spot lights, etc.)
+                #ifdef _ADDITIONAL_LIGHTS
+                    uint pixelLightCount = GetAdditionalLightsCount();
+                    for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
+                    {
+                        Light light = GetAdditionalLight(lightIndex, i.positionWS);
+                        
+                        // Calculate toon lighting for this additional light
+                        float additionalNdotL = saturate(dot(normal, light.direction));
+                        additionalNdotL = floor(additionalNdotL / stepSize) * stepSize;
+                        
+                        // Apply light with distance attenuation and shadows
+                        float3 additionalLight = _BaseColor.rgb * additionalNdotL * light.color 
+                                                * light.distanceAttenuation * light.shadowAttenuation;
+                        
+                        litColor += additionalLight;
+                    }
+                #endif
 
                 return float4(litColor, 1.0);
             }
@@ -114,8 +136,6 @@ Shader "Custom/SimpleToonURP"
             ENDHLSL
         }
 
-        // ⭐ NEW: DepthNormals pass (critical for edge detection, SSAO, etc.)
-        
         Pass
         {
             Name "DepthNormals"

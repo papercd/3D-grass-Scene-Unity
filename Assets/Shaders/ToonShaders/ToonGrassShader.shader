@@ -66,6 +66,7 @@ Shader "Custom/ToonGrassURPWithWind"
             StructuredBuffer<float4> _BasePos;
             StructuredBuffer<float4> _BaseNormal;
             StructuredBuffer<float4> _TileIndex;
+            StructuredBuffer<float4> _Scale;  // NEW: Per-instance scale buffer
 
             float3 ComputeToonLighting(float3 worldPos, float3 normalWS, float4 baseColor, float rampSteps)
             {
@@ -81,6 +82,23 @@ Shader "Custom/ToonGrassURPWithWind"
 
                 float3 ambient = SampleSH(normalWS);
                 lit += baseColor.rgb * ambient * 0.5;
+
+                #ifdef _ADDITIONAL_LIGHTS
+                    uint pixelLightCount = GetAdditionalLightsCount();
+                    for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
+                    {
+                        Light light = GetAdditionalLight(lightIndex, worldPos);
+                        
+                        // Calculate toon lighting for this additional light
+                        float additionalNdotL = saturate(dot(normalWS, light.direction));
+                        additionalNdotL = floor(additionalNdotL / stepSize) * stepSize;
+                        
+                        // Apply light attenuation (distance + shadows)
+                        float3 additionalLight = baseColor.rgb * additionalNdotL * light.color * light.distanceAttenuation * light.shadowAttenuation;
+                        
+                        lit += additionalLight;
+                    }
+                #endif
 
                 return lit;
             }
@@ -118,6 +136,7 @@ Shader "Custom/ToonGrassURPWithWind"
                 float3 basePos = _BasePos[instanceID].xyz;
                 float3 baseNormal = normalize(_BaseNormal[instanceID].xyz);
                 float tileIndex = _TileIndex[instanceID].x;
+                float instanceScale = _Scale[instanceID].x;  // NEW: Get per-instance scale
 
                 // Billboard to camera
                 float3 camPos = GetCameraPositionWS();
@@ -129,7 +148,7 @@ Shader "Custom/ToonGrassURPWithWind"
                 float3 right = normalize(cross(up, viewDir));
                 float3 forward = normalize(cross(right, up));
 
-                float3 localPos = v.positionOS;
+                float3 localPos = v.positionOS * instanceScale;  // NEW: Apply scale here
                 float3 worldPos = basePos + right * localPos.x + up * localPos.y + forward * localPos.z;
 
                 // Apply wind (more at the top of the blade)
@@ -213,6 +232,7 @@ Shader "Custom/ToonGrassURPWithWind"
             StructuredBuffer<float4> _BasePos;
             StructuredBuffer<float4> _BaseNormal;
             StructuredBuffer<float4> _TileIndex;
+            StructuredBuffer<float4> _Scale;  // NEW: Per-instance scale buffer
 
             float3 ApplyWind(float3 worldPos, float verticalGradient, uint instanceID)
             {
@@ -243,6 +263,7 @@ Shader "Custom/ToonGrassURPWithWind"
                 float3 basePos = _BasePos[instanceID].xyz;
                 float3 baseNormal = normalize(_BaseNormal[instanceID].xyz);
                 float tileIndex = _TileIndex[instanceID].x;
+                float instanceScale = _Scale[instanceID].x;  // NEW: Get per-instance scale
 
                 float3 camPos = GetCameraPositionWS();
                 float3 viewDir = normalize(basePos - camPos);
@@ -253,7 +274,7 @@ Shader "Custom/ToonGrassURPWithWind"
                 float3 right = normalize(cross(up, viewDir));
                 float3 forward = normalize(cross(right, up));
 
-                float3 localPos = v.positionOS;
+                float3 localPos = v.positionOS * instanceScale;  // NEW: Apply scale here
                 float3 worldPos = basePos + right * localPos.x + up * localPos.y + forward * localPos.z;
 
                 // Apply wind to shadow

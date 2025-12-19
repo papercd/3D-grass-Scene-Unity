@@ -11,18 +11,20 @@ public class GrassSpawner : MonoBehaviour
     public int grassCount = 2000;
 
     [Header("Appearance")]
+    [Tooltip("Random scale range for grass size variation")]
     public Vector2 scaleRange = new Vector2(0.8f, 1.2f);
     public bool randomRotation = true;
 
     [Header("Shadows")]
     [Tooltip("Should grass cast shadows?")]
-    public bool castShadows = false;  // NEW: Toggle for shadow casting
+    public bool castShadows = false;
 
     // GPU buffers (persistent)
     private ComputeBuffer argsBuffer;
     private ComputeBuffer positionBuffer;
     private ComputeBuffer normalBuffer;
     private ComputeBuffer tileIndexBuffer;
+    private ComputeBuffer scaleBuffer; // NEW: Per-instance scale
 
     private Bounds renderBounds;
 
@@ -51,6 +53,7 @@ public class GrassSpawner : MonoBehaviour
         Vector4[] positions = new Vector4[n];
         Vector4[] normals = new Vector4[n];
         Vector4[] tileIndices = new Vector4[n];
+        Vector4[] scales = new Vector4[n]; // NEW: Scale data
 
         Vector3 minGrass = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
         Vector3 maxGrass = new Vector3(float.MinValue, float.MinValue, float.MinValue);
@@ -71,6 +74,10 @@ public class GrassSpawner : MonoBehaviour
             normals[i] = new Vector4(normal.x, normal.y, normal.z, 0f);
             tileIndices[i] = new Vector4(Random.Range(0, 9), 0f, 0f, 0f);
 
+            // NEW: Generate random scale for this grass blade
+            float randomScale = Random.Range(scaleRange.x, scaleRange.y);
+            scales[i] = new Vector4(randomScale, randomScale, randomScale, 0f);
+
             minGrass = Vector3.Min(minGrass, pos);
             maxGrass = Vector3.Max(maxGrass, pos);
         }
@@ -79,15 +86,18 @@ public class GrassSpawner : MonoBehaviour
         positionBuffer = new ComputeBuffer(n, sizeof(float) * 4);
         normalBuffer = new ComputeBuffer(n, sizeof(float) * 4);
         tileIndexBuffer = new ComputeBuffer(n, sizeof(float) * 4);
+        scaleBuffer = new ComputeBuffer(n, sizeof(float) * 4); // NEW: Scale buffer
 
         positionBuffer.SetData(positions);
         normalBuffer.SetData(normals);
         tileIndexBuffer.SetData(tileIndices);
+        scaleBuffer.SetData(scales); // NEW: Upload scale data
 
         // Bind buffers to material (stays bound)
         grassMaterial.SetBuffer("_BasePos", positionBuffer);
         grassMaterial.SetBuffer("_BaseNormal", normalBuffer);
         grassMaterial.SetBuffer("_TileIndex", tileIndexBuffer);
+        grassMaterial.SetBuffer("_Scale", scaleBuffer); // NEW: Bind scale buffer
 
         // Setup indirect args
         uint[] args = new uint[5] { 0, 0, 0, 0, 0 };
@@ -99,12 +109,13 @@ public class GrassSpawner : MonoBehaviour
         argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
         argsBuffer.SetData(args);
 
-        // Calculate bounds (for culling)
+        // Calculate bounds (for culling) - expand for larger grass
         Vector3 center = (minGrass + maxGrass) * 0.5f;
         Vector3 size = maxGrass - minGrass;
         renderBounds = new Bounds(center, size);
+        renderBounds.Expand(scaleRange.y * 2f); // Expand bounds for larger grass
 
-        Debug.Log($"Grass system initialized with {n} instances. Bounds: {renderBounds}");
+        Debug.Log($"Grass system initialized with {n} instances. Scale range: {scaleRange.x}-{scaleRange.y}. Bounds: {renderBounds}");
     }
 
     void Update()
@@ -125,7 +136,7 @@ public class GrassSpawner : MonoBehaviour
             argsBuffer,
             0,
             null,
-            shadowMode,  // Now controlled by the castShadows toggle
+            shadowMode,
             true,
             gameObject.layer
         );
@@ -137,6 +148,7 @@ public class GrassSpawner : MonoBehaviour
         positionBuffer?.Release();
         normalBuffer?.Release();
         tileIndexBuffer?.Release();
+        scaleBuffer?.Release(); // NEW: Release scale buffer
         argsBuffer?.Release();
     }
 
