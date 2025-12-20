@@ -1316,8 +1316,8 @@ MonoBehaviour:
   relicMeshRenderer: {fileID: 1826642369}
   healingParticles: {fileID: 0}
   damageParticles: {fileID: 0}
-  maxLightIntensity: 2000
-  minLightIntensity: 1000
+  maxLightIntensity: 200
+  minLightIntensity: 50
   audioSource: {fileID: 0}
   damageSound: {fileID: 0}
   criticalWarningSound: {fileID: 0}
@@ -1379,12 +1379,12 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1943200371}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 11
   m_Type: 2
   m_Color: {r: 1, g: 0, b: 0, a: 1}
   m_Intensity: 1
-  m_Range: 50
+  m_Range: 100
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
   m_CookieSize: 10

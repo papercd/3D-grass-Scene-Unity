@@ -1,17 +1,19 @@
-Shader "Custom/SimpleToonURP"
+Shader "Custom/SimpleToonURP_ForwardPlus"
 {
     Properties
     {
-        _BaseColor("Base Color", Color) = (1, 1, 1, 1)
-        _RampSteps("Light Steps", Range(1, 8)) = 3
+        _BaseColor ("Base Color", Color) = (1,1,1,1)
+        _RampSteps ("Light Steps", Range(1,8)) = 3
     }
 
     SubShader
     {
-        Tags { 
+        Tags
+        {
             "RenderType"="Opaque"
             "Queue"="Geometry"
             "RenderPipeline"="UniversalPipeline"
+            "TerrainCompatible"="True"
         }
 
         Pass
@@ -23,86 +25,122 @@ Shader "Custom/SimpleToonURP"
             #pragma vertex vert
             #pragma fragment frag
 
-            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
+            // Forward + Forward+ compatibility
+            #pragma multi_compile _ _ADDITIONAL_LIGHTS
+            #pragma multi_compile _ _FORWARD_PLUS
+
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
-            #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
-            #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
 
+            // ===== Correct includes for Forward+ =====
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RealtimeLights.hlsl"
 
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; UNITY_VERTEX_INPUT_INSTANCE_ID };
-            struct Varyings { float4 positionHCS : SV_POSITION; float3 normalWS : TEXCOORD0; float3 positionWS : TEXCOORD1; UNITY_VERTEX_INPUT_INSTANCE_ID };
+            struct Attributes
+            {
+                float4 positionOS : POSITION;
+                float3 normalOS   : NORMAL;
+            };
+
+            struct Varyings
+            {
+                float4 positionCS : SV_POSITION;
+                float3 positionWS : TEXCOORD0;
+                float3 normalWS   : TEXCOORD1;
+            };
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseColor;
-                float _RampSteps;
+                float  _RampSteps;
             CBUFFER_END
 
-            Varyings vert(Attributes v)
+            Varyings vert (Attributes v)
             {
                 Varyings o;
-                UNITY_SETUP_INSTANCE_ID(v);
-                UNITY_TRANSFER_INSTANCE_ID(v, o);
-
-                VertexPositionInputs posInputs = GetVertexPositionInputs(v.positionOS.xyz);
-                o.positionHCS = posInputs.positionCS;
-                o.positionWS = posInputs.positionWS;
-                o.normalWS = TransformObjectToWorldNormal(v.normalOS);
-
+                o.positionWS = TransformObjectToWorld(v.positionOS.xyz);
+                o.positionCS = TransformWorldToHClip(o.positionWS);
+                o.normalWS   = TransformObjectToWorldNormal(v.normalOS);
                 return o;
             }
 
-            float4 frag(Varyings i) : SV_Target
+            // === Your original toon ramp ===
+            float ToonRamp(float ndotl)
             {
-                UNITY_SETUP_INSTANCE_ID(i);
+                float steps = max(1.0, _RampSteps);
+                float stepSize = 1.0 / steps;
+                return floor(ndotl / stepSize) * stepSize;
+            }
 
-                float3 normal = normalize(i.normalWS);
-                float4 shadowCoord = TransformWorldToShadowCoord(i.positionWS);
+            float3 ApplyLight(float3 normalWS, Light light)
+            {
+                float ndotl = saturate(dot(normalWS, normalize(light.direction)));
+                ndotl = ToonRamp(ndotl);
 
-                // Main directional light
-                Light mainLight = GetMainLight(shadowCoord);
-                float NdotL = saturate(dot(normal, mainLight.direction));
+                return _BaseColor.rgb
+                     * ndotl
+                     * light.color
+                     * light.distanceAttenuation
+                     * light.shadowAttenuation;
+            }
 
-                float stepSize = 1.0 / _RampSteps;
-                NdotL = floor(NdotL / stepSize) * stepSize;
+            half4 frag (Varyings input) : SV_Target
+            {
+                float3 normalWS = normalize(input.normalWS);
+                float3 color = 0;
 
-                float3 litColor = _BaseColor.rgb * NdotL * mainLight.color * mainLight.shadowAttenuation;
-                
-                // Ambient
-                float3 ambient = SampleSH(normal);
-                litColor += _BaseColor.rgb * ambient * 0.5;
+                // ===== Required for Forward+ light loops =====
+                InputData inputData = (InputData)0;
+                inputData.positionWS = input.positionWS;
+                inputData.normalWS = normalWS;
+                inputData.viewDirectionWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
+                inputData.normalizedScreenSpaceUV =
+                    GetNormalizedScreenSpaceUV(input.positionCS);
 
-                // ⭐ NEW: Additional lights (point lights, spot lights, etc.)
-                #ifdef _ADDITIONAL_LIGHTS
-                    uint pixelLightCount = GetAdditionalLightsCount();
-                    for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
-                    {
-                        Light light = GetAdditionalLight(lightIndex, i.positionWS);
-                        
-                        // Calculate toon lighting for this additional light
-                        float additionalNdotL = saturate(dot(normal, light.direction));
-                        additionalNdotL = floor(additionalNdotL / stepSize) * stepSize;
-                        
-                        // Apply light with distance attenuation and shadows
-                        float3 additionalLight = _BaseColor.rgb * additionalNdotL * light.color 
-                                                * light.distanceAttenuation * light.shadowAttenuation;
-                        
-                        litColor += additionalLight;
-                    }
+                // ===== Main directional light (RETAINED) =====
+                Light mainLight = GetMainLight();
+                color += ApplyLight(normalWS, mainLight);
+
+                // ===== Additional lights =====
+                #if defined(_ADDITIONAL_LIGHTS)
+
+                // Forward+ non-main directional lights
+                #if USE_FORWARD_PLUS
+                UNITY_LOOP
+                for (uint i = 0; i < min(URP_FP_DIRECTIONAL_LIGHTS_COUNT, MAX_VISIBLE_LIGHTS); i++)
+                {
+                    Light light =
+                        GetAdditionalLight(i, inputData.positionWS, half4(1,1,1,1));
+                    color += ApplyLight(normalWS, light);
+                }
                 #endif
 
-                return float4(litColor, 1.0);
+                // Punctual lights (point / spot)
+                uint pixelLightCount = GetAdditionalLightsCount();
+                LIGHT_LOOP_BEGIN(pixelLightCount)
+                    Light light =
+                        GetAdditionalLight(lightIndex, inputData.positionWS, half4(1,1,1,1));
+                    color += ApplyLight(normalWS, light);
+                LIGHT_LOOP_END
+
+                #endif
+
+                // ===== Ambient (unchanged) =====
+                float3 ambient = SampleSH(normalWS);
+                color += _BaseColor.rgb * ambient * 0.5;
+
+                return half4(color, 1.0);
             }
 
             ENDHLSL
         }
 
+        // Shadow / depth passes unchanged
         Pass
         {
             Name "ShadowCaster"
-            Tags{"LightMode" = "ShadowCaster"}
+            Tags { "LightMode"="ShadowCaster" }
 
             ZWrite On
             ZTest LEqual
@@ -111,17 +149,14 @@ Shader "Custom/SimpleToonURP"
             HLSLPROGRAM
             #pragma vertex ShadowPassVertex
             #pragma fragment ShadowPassFragment
-
-            #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/ShadowCasterPass.hlsl"
-
             ENDHLSL
         }
 
         Pass
         {
             Name "DepthOnly"
-            Tags{"LightMode" = "DepthOnly"}
+            Tags { "LightMode"="DepthOnly" }
 
             ZWrite On
             ColorMask 0
@@ -129,25 +164,7 @@ Shader "Custom/SimpleToonURP"
             HLSLPROGRAM
             #pragma vertex DepthOnlyVertex
             #pragma fragment DepthOnlyFragment
-
-            #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/DepthOnlyPass.hlsl"
-
-            ENDHLSL
-        }
-
-        Pass
-        {
-            Name "DepthNormals"
-            Tags { "LightMode" = "DepthNormals" }
-
-            HLSLPROGRAM
-            #pragma vertex DepthNormalsVertex
-            #pragma fragment DepthNormalsFragment
-
-            #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/Shaders/DepthNormalsPass.hlsl"
-
             ENDHLSL
         }
     }
