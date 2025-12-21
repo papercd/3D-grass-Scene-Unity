@@ -4,6 +4,7 @@ Shader "Custom/SimpleToonURP_ForwardPlus"
     {
         _BaseColor ("Base Color", Color) = (1,1,1,1)
         _RampSteps ("Light Steps", Range(1,8)) = 3
+        _AddLightRampsMult ("Lights Ramps Mult", Range(1,4)) = 2
     }
 
     SubShader
@@ -54,6 +55,7 @@ Shader "Custom/SimpleToonURP_ForwardPlus"
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseColor;
                 float  _RampSteps;
+                float _AddLightRampsMult;
             CBUFFER_END
 
             Varyings vert (Attributes v)
@@ -73,10 +75,29 @@ Shader "Custom/SimpleToonURP_ForwardPlus"
                 return floor(ndotl / stepSize) * stepSize;
             }
 
+            float ToonRampAdditionalLight(float ndotl)
+            {
+                float steps = max(1.0, _RampSteps*_AddLightRampsMult);
+                float stepSize = 1.0 / steps ;
+                return floor(ndotl / stepSize) * stepSize;
+            }
+
             float3 ApplyLight(float3 normalWS, Light light)
             {
                 float ndotl = saturate(dot(normalWS, normalize(light.direction)));
                 ndotl = ToonRamp(ndotl);
+
+                return _BaseColor.rgb
+                     * ndotl
+                     * light.color
+                     * light.distanceAttenuation
+                     * light.shadowAttenuation;
+            }
+
+            float3 ApplyAdditionalLight(float3 normalWS, Light light)
+            {
+                float ndotl = saturate(dot(normalWS, normalize(light.direction)));
+                ndotl = ToonRampAdditionalLight(ndotl);
 
                 return _BaseColor.rgb
                      * ndotl
@@ -112,7 +133,7 @@ Shader "Custom/SimpleToonURP_ForwardPlus"
                 {
                     Light light =
                         GetAdditionalLight(i, inputData.positionWS, half4(1,1,1,1));
-                    color += ApplyLight(normalWS, light);
+                    color += ApplyAdditionalLight(normalWS, light);
                 }
                 #endif
 
@@ -121,7 +142,7 @@ Shader "Custom/SimpleToonURP_ForwardPlus"
                 LIGHT_LOOP_BEGIN(pixelLightCount)
                     Light light =
                         GetAdditionalLight(lightIndex, inputData.positionWS, half4(1,1,1,1));
-                    color += ApplyLight(normalWS, light);
+                    color += ApplyAdditionalLight(normalWS, light);
                 LIGHT_LOOP_END
 
                 #endif

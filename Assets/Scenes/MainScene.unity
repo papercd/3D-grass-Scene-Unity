@@ -1316,8 +1316,8 @@ MonoBehaviour:
   relicMeshRenderer: {fileID: 1826642369}
   healingParticles: {fileID: 0}
   damageParticles: {fileID: 0}
-  maxLightIntensity: 200
-  minLightIntensity: 50
+  maxLightIntensity: 250
+  minLightIntensity: 100
   audioSource: {fileID: 0}
   damageSound: {fileID: 0}
   criticalWarningSound: {fileID: 0}
@@ -1456,7 +1456,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &2058254399
 MonoBehaviour:
   m_ObjectHideFlags: 0

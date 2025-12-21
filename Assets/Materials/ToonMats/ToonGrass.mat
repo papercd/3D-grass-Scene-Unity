@@ -90,6 +90,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _AddLightRampsMult: 3
     - _AddPrecomputedVelocity: 0
     - _AlphaClip: 0
     - _AlphaToMask: 0
@@ -121,6 +122,9 @@ Material:
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
     - _Surface: 0
+    - _WindScale: 1
+    - _WindSpeed: 2
+    - _WindStrength: 0.3
     - _WorkflowMode: 1
     - _XRMotionVectorsPass: 1
     - _ZWrite: 1
@@ -132,6 +136,7 @@ Material:
     - _TerrainOrigin: {r: 0, g: 0, b: 0, a: 0}
     - _TerrainSize: {r: 50, g: 600, b: 50, a: 0}
     - _Tint: {r: 0.4541406, g: 0.8207547, b: 0.30584726, a: 1}
+    - _WindDirection: {r: 1, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
 --- !u!114 &4365616434088367451

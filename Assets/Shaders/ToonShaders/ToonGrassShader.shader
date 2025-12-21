@@ -5,6 +5,7 @@ Shader "Custom/ToonGrassURPWithWind"
         _GrassTex ("Grass Texture", 2D) = "white" {}
         _Tint ("Tint Color", Color) = (1,1,1,1)
         _RampSteps("Light Steps", Range(1,8)) = 3
+        _AddLightRampsMult ("Lights Ramps Mult", Range(1,4)) = 2
         
         [Header(Wind)]
         _WindSpeed ("Wind Speed", Float) = 2.0
@@ -28,10 +29,17 @@ Shader "Custom/ToonGrassURPWithWind"
             #pragma instancing_options assumeuniformscaling
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
-            #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+            
+            #pragma multi_compile _ _FORWARD_PLUS
+            #pragma multi_compile _ _ADDITIONAL_LIGHTS
             #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
 
+            //#pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+            //pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
+
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RealtimeLights.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
 
@@ -54,6 +62,7 @@ Shader "Custom/ToonGrassURPWithWind"
             CBUFFER_START(UnityPerMaterial)
                 float4 _Tint;
                 float _RampSteps;
+                float _AddLightRampsMult;
                 float _WindSpeed;
                 float _WindStrength;
                 float _WindScale;
@@ -68,6 +77,65 @@ Shader "Custom/ToonGrassURPWithWind"
             StructuredBuffer<float4> _TileIndex;
             StructuredBuffer<float4> _Scale;  // NEW: Per-instance scale buffer
 
+            float3 ToonLightContribution(float3 normalWS, Light light, float rampSteps)
+            {
+                float NdotL = saturate(dot(normalWS, light.direction));
+
+                float stepSize = 1.0 / rampSteps;
+                NdotL = floor(NdotL / stepSize) * stepSize;
+
+                return NdotL * light.color * light.distanceAttenuation * light.shadowAttenuation;
+            }
+
+            float3 AdditionalToonLightContribution(float3 normalWS, Light light, float rampSteps)
+            {
+                float NdotL = saturate(dot(normalWS, light.direction));
+
+                float stepSize = 1.0 / (rampSteps*_AddLightRampsMult);
+                NdotL = floor(NdotL / stepSize) * stepSize;
+
+                return NdotL * light.color * light.distanceAttenuation * light.shadowAttenuation;
+            }
+
+
+            float3 ComputeToonLighting(InputData inputData, float4 baseColor, float rampSteps)
+            {
+                float3 lighting = 0;
+
+                // --- Main light ---
+                Light mainLight = GetMainLight(inputData.shadowCoord);
+                lighting += ToonLightContribution(inputData.normalWS, mainLight, rampSteps);
+
+                // --- Ambient ---
+                lighting += SampleSH(inputData.normalWS) * 0.5;
+
+                // --- Additional lights ---
+                #if defined(_ADDITIONAL_LIGHTS)
+
+                    #if USE_FORWARD_PLUS
+                        // Directional lights in Forward+
+                        UNITY_LOOP for (uint lightIndex = 0;
+                                        lightIndex < min(URP_FP_DIRECTIONAL_LIGHTS_COUNT, MAX_VISIBLE_LIGHTS);
+                                        lightIndex++)
+                        {
+                            Light light = GetAdditionalLight(lightIndex, inputData.positionWS, half4(1,1,1,1));
+                            lighting += ToonLightContribution(inputData.normalWS, light, rampSteps);
+                        }
+                    #endif
+
+                    // Clustered / per-pixel lights
+                    uint pixelLightCount = GetAdditionalLightsCount();
+                    LIGHT_LOOP_BEGIN(pixelLightCount)
+                        Light light = GetAdditionalLight(lightIndex, inputData.positionWS, half4(1,1,1,1));
+                        lighting += ToonLightContribution(inputData.normalWS, light, rampSteps);
+                    LIGHT_LOOP_END
+
+                #endif
+
+                return lighting * baseColor.rgb;
+            }
+
+            /*
             float3 ComputeToonLighting(float3 worldPos, float3 normalWS, float4 baseColor, float rampSteps)
             {
                 float4 shadowCoord = TransformWorldToShadowCoord(worldPos);
@@ -82,7 +150,7 @@ Shader "Custom/ToonGrassURPWithWind"
 
                 float3 ambient = SampleSH(normalWS);
                 lit += baseColor.rgb * ambient * 0.5;
-
+                
                 #ifdef _ADDITIONAL_LIGHTS
                     uint pixelLightCount = GetAdditionalLightsCount();
                     for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
@@ -101,7 +169,7 @@ Shader "Custom/ToonGrassURPWithWind"
                 #endif
 
                 return lit;
-            }
+            }*/
 
             float3 ApplyWind(float3 worldPos, float verticalGradient, uint instanceID)
             {
@@ -168,6 +236,7 @@ Shader "Custom/ToonGrassURPWithWind"
                 return o;
             }
 
+            /*
             float4 frag(Varyings i) : SV_Target
             {
                 UNITY_SETUP_INSTANCE_ID(i);
@@ -183,7 +252,28 @@ Shader "Custom/ToonGrassURPWithWind"
 
                 // Final output = toon color only
                 return float4(toonCol, 1.0);
+            }*/
+
+            float4 frag(Varyings i) : SV_Target
+            {
+                UNITY_SETUP_INSTANCE_ID(i);
+
+                float4 texSample = SAMPLE_TEXTURE2D(_GrassTex, sampler_GrassTex, i.uv);
+                clip(texSample.a - 0.5);
+
+                InputData inputData = (InputData)0;
+                inputData.positionWS = i.worldPos;
+                inputData.normalWS = normalize(i.baseNormalWS);
+                inputData.viewDirectionWS = GetWorldSpaceNormalizeViewDir(i.worldPos);
+                inputData.shadowCoord = TransformWorldToShadowCoord(i.worldPos);
+                inputData.normalizedScreenSpaceUV =
+                    GetNormalizedScreenSpaceUV(i.positionHCS);
+
+                float3 color = ComputeToonLighting(inputData, _Tint, _RampSteps);
+
+                return float4(color, 1.0);
             }
+
 
             ENDHLSL
         }
