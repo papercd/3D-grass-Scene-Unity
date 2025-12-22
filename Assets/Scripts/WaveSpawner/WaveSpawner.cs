@@ -79,9 +79,16 @@ namespace WaveSpawner {
             // Pick random spawn point
             Vector3 spawnPoint = GetRandomPosition();
             
+            // Draw Position
+            if (showSpawnGizmos) {
+                DrawDebugBox(spawnPoint, new Vector3(15f, 15f, 15f), Color.crimson, 20f);
+            }
+            
             // Spawn Enemy
             GameObject enemy = Instantiate(enemyPrefab, spawnPoint, Quaternion.identity);
             EnemyStats stats = enemy.GetComponent<EnemyStats>();
+
+            enemy.transform.localScale = Vector3.one * 5f;
             
             // Subscribe to enemy death
             if (stats != null) {
@@ -126,10 +133,10 @@ namespace WaveSpawner {
             var maxZ = _spawnProhibitedArea.bounds.max.z;
             var minZ = _spawnProhibitedArea.bounds.min.z;
             
-            var topLeftCorner = new Vector3(minX, 1, maxZ);
-            var topRightCorner = new Vector3(maxX, 1, maxZ);
-            var bottomLeftCorner = new Vector3(minX, 1, minZ);
-            var bottomRightCorner = new Vector3(maxX, 1, minZ);
+            var topLeftCorner = new Vector3(minX, 2, maxZ);
+            var topRightCorner = new Vector3(maxX, 2, maxZ);
+            var bottomLeftCorner = new Vector3(minX, 2, minZ);
+            var bottomRightCorner = new Vector3(maxX, 2, minZ);
 
             var top = new List<Vector3> {topLeftCorner, topRightCorner};
             var bottom = new List<Vector3> {bottomLeftCorner, bottomRightCorner};
@@ -158,6 +165,35 @@ namespace WaveSpawner {
 
             Gizmos.color = Color.crimson;
             Gizmos.DrawWireCube(_spawnProhibitedArea.bounds.center, _spawnProhibitedArea.bounds.size);
+        }
+        
+        private void DrawDebugBox(Vector3 center, Vector3 size, Color color, float duration) {
+            Vector3 halfSize = size / 2f;
+    
+            Vector3 topFrontLeft = center + new Vector3(-halfSize.x, halfSize.y, halfSize.z);
+            Vector3 topFrontRight = center + new Vector3(halfSize.x, halfSize.y, halfSize.z);
+            Vector3 topBackLeft = center + new Vector3(-halfSize.x, halfSize.y, -halfSize.z);
+            Vector3 topBackRight = center + new Vector3(halfSize.x, halfSize.y, -halfSize.z);
+    
+            Vector3 bottomFrontLeft = center + new Vector3(-halfSize.x, -halfSize.y, halfSize.z);
+            Vector3 bottomFrontRight = center + new Vector3(halfSize.x, -halfSize.y, halfSize.z);
+            Vector3 bottomBackLeft = center + new Vector3(-halfSize.x, -halfSize.y, -halfSize.z);
+            Vector3 bottomBackRight = center + new Vector3(halfSize.x, -halfSize.y, -halfSize.z);
+    
+            Debug.DrawLine(topFrontLeft, topFrontRight, color, duration);
+            Debug.DrawLine(topFrontRight, topBackRight, color, duration);
+            Debug.DrawLine(topBackRight, topBackLeft, color, duration);
+            Debug.DrawLine(topBackLeft, topFrontLeft, color, duration);
+    
+            Debug.DrawLine(bottomFrontLeft, bottomFrontRight, color, duration);
+            Debug.DrawLine(bottomFrontRight, bottomBackRight, color, duration);
+            Debug.DrawLine(bottomBackRight, bottomBackLeft, color, duration);
+            Debug.DrawLine(bottomBackLeft, bottomFrontLeft, color, duration);
+    
+            Debug.DrawLine(topFrontLeft, bottomFrontLeft, color, duration);
+            Debug.DrawLine(topFrontRight, bottomFrontRight, color, duration);
+            Debug.DrawLine(topBackLeft, bottomBackLeft, color, duration);
+            Debug.DrawLine(topBackRight, bottomBackRight, color, duration);
         }
 
         private void OnDisable() {

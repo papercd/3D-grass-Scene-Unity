@@ -16,9 +16,25 @@ MonoBehaviour:
   - waveNumber: 0
     enemyGroups:
     - enemyName: Ogre
-      enemyCount: 100
-      spawnCount: 0
+      groupSize: 10
+      groupQuota: 200
+      totalGroupSpawns: 0
       enemyPrefab: {fileID: 1981044994466574647, guid: 4eed76e868d22e04ea8fcd3d8c990931, type: 3}
-    waveQuota: 200
-    spawnInterval: 1
-    spawnCount: 1
+    quota: 100
+    maxConcurrent: 50
+    spawnInterval: 2
+  - waveNumber: 1
+    enemyGroups:
+    - enemyName: Ogre
+      groupSize: 5
+      groupQuota: 100
+      totalGroupSpawns: 0
+      enemyPrefab: {fileID: 1981044994466574647, guid: 4eed76e868d22e04ea8fcd3d8c990931, type: 3}
+    - enemyName: Wisp
+      groupSize: 20
+      groupQuota: 100
+      totalGroupSpawns: 0
+      enemyPrefab: {fileID: 8761520000606240189, guid: 0d3cee40264713a439eb028e99c141f8, type: 3}
+    quota: 20
+    maxConcurrent: 20
+    spawnInterval: 0.1
