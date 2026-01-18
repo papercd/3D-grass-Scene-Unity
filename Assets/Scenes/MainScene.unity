@@ -1082,6 +1082,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: Ogre
       objectReference: {fileID: 0}
+    - target: {fileID: 8700981833322630457, guid: 4eed76e868d22e04ea8fcd3d8c990931, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.7542728
+      objectReference: {fileID: 0}
+    - target: {fileID: 8700981833322630457, guid: 4eed76e868d22e04ea8fcd3d8c990931, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -2.8150563
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

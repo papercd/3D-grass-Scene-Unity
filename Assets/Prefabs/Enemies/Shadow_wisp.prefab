@@ -99,8 +99,8 @@ MonoBehaviour:
   playerDetectionRange: 8
   attackRange: 2
   stoppingDistance: 1.5
-  autoFindRelic: 1
-  autoFindPlayer: 1
+  autoFindRelic: 0
+  autoFindPlayer: 0
 --- !u!135 &7140812450790473628
 SphereCollider:
   m_ObjectHideFlags: 0
